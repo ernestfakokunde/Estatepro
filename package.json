@@ -1,0 +1,16 @@
+﻿{
+  "name": "estatepro",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/frontend", "apps/backend"],
+  "scripts": {
+    "dev": "concurrently -k -n frontend,backend -c blue,green \"npm run dev --workspace @estatepro/frontend\" \"npm run dev --workspace @estatepro/backend\"",
+    "dev:frontend": "npm run dev --workspace @estatepro/frontend",
+    "dev:backend": "npm run dev --workspace @estatepro/backend",
+    "build": "npm run build --workspace @estatepro/backend && npm run build --workspace @estatepro/frontend",
+    "start": "concurrently -k -n frontend,backend -c blue,green \"npm run start --workspace @estatepro/frontend\" \"npm run start --workspace @estatepro/backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
