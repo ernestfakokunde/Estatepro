@@ -11,6 +11,12 @@ export const registerSchema = z.object({
   phone: z.string().trim().max(32).optional(),
   password: z.string().min(8, 'Use at least 8 characters.').max(72),
 });
+export const agentRegisterSchema = registerSchema.extend({
+  phone: z.string().trim().min(7, 'Enter a valid phone number.').max(32).regex(/^[+()\d\s.-]+$/, 'Enter a valid phone number.'),
+  agency: z.string().trim().max(120).optional().or(z.literal('')),
+  licenseNumber: z.string().trim().max(100).optional().or(z.literal('')),
+  bio: z.string().trim().max(1200).optional().or(z.literal('')),
+});
 export const inquirySchema = z.object({
   name: z.string().trim().min(2, 'Enter your name.').max(80),
   email: z.string().trim().email('Enter a valid email address.'),
@@ -43,5 +49,6 @@ export const propertySchema = z.object({
 
 export type LoginValues = z.infer<typeof loginSchema>;
 export type RegisterValues = z.infer<typeof registerSchema>;
+export type AgentRegisterValues = z.infer<typeof agentRegisterSchema>;
 export type InquiryValues = z.infer<typeof inquirySchema>;
 export type PropertyFormValues = z.infer<typeof propertySchema>;

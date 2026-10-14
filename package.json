@@ -18,7 +18,9 @@
     "start:server": "npm run start --prefix server",
     "db:generate": "npm run prisma:generate --prefix server",
     "db:migrate": "npm run prisma:migrate --prefix server",
+    "db:push": "npm run prisma:push --prefix server",
     "db:seed": "npm run prisma:seed --prefix server",
+    "db:setup": "npm run db:generate && npm run db:push && npm run db:seed",
     "lint": "eslint client server",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -31,6 +33,13 @@
     "@eslint/eslintrc": "^3.3.1"
   },
   "overrides": {
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": {
+      ".": "^3.4.17",
+      "postcss": "^8.5.23"
+    },
+    "postcss": "^8.5.23",
+    "@prisma/config": {
+      "deepmerge-ts": "^8.0.0"
+    }
   }
 }

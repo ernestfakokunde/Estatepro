@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, BadgeCheck, Bath, BedDouble, Maximize2 } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BadgeCheck, Bath, BedDouble, Maximize2, MessageCircle } from 'lucide-react';
 import { apiFetch, ApiError } from '@/lib/api';
 import { formatArea, formatNaira, titleCase } from '@/lib/utils';
 import type { Property } from '@/types/property';
@@ -56,6 +56,14 @@ export default async function ListingDetailPage({ params }: RouteParams) {
     .then((result) => result.data)
     .catch(() => []);
   const location = `${property.city}, ${property.state}`;
+  const agentPhone = property.agent.phone?.replace(/\D/g, '');
+  const whatsappNumber = agentPhone
+    ? agentPhone.startsWith('2340')
+      ? `234${agentPhone.slice(4)}`
+      : agentPhone.startsWith('0')
+        ? `234${agentPhone.slice(1)}`
+      : agentPhone
+    : null;
   return (
     <main className="page-container py-7 md:py-10">
       <Link
@@ -147,6 +155,16 @@ export default async function ListingDetailPage({ params }: RouteParams) {
             <p className="mt-4 border-t border-line pt-4 text-xs leading-5 text-muted">
               A local property advisor can share more about this home and help arrange a viewing.
             </p>
+            {whatsappNumber && (
+              <a
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hello, I’m interested in ${property.title}.`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 border border-[#c8d9ce] bg-[#f4f8f5] px-4 text-sm font-medium text-forest hover:bg-[#eaf2ec]"
+              >
+                <MessageCircle size={17} /> Message {property.agent.name} on WhatsApp
+              </a>
+            )}
             <InquiryForm propertyId={property.id} agentName={property.agent.name} />
           </div>
         </aside>

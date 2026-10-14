@@ -9,3 +9,5 @@ export const userUpdateSchema = z
   .refine((value) => value.role !== undefined || value.isActive !== undefined, {
     message: 'Provide a role or account status to update.',
   });
+
+export const agentReviewSchema = z.object({ status: z.enum(['APPROVED', 'REJECTED']) });

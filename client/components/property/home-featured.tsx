@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowUpRight, BedDouble, Bath, MapPin, Maximize2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatArea, formatNaira, propertyUrl } from '@/lib/utils';
@@ -15,19 +15,22 @@ export function HomeFeatured() {
   const [property, setProperty] = useState<Property | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
   const [retry, setRetry] = useState(0);
-  const load = useCallback(async () => {
-    setState('loading');
-    try {
-      const result = await apiFetch<Property[]>('/properties?sort=newest&limit=1');
-      setProperty(result.data[0] ?? null);
-      setState(result.data[0] ? 'ready' : 'empty');
-    } catch {
-      setState('error');
-    }
-  }, [retry]);
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    setState('loading');
+    apiFetch<Property[]>('/properties?sort=newest&limit=1')
+      .then((result) => {
+        if (!active) return;
+        setProperty(result.data[0] ?? null);
+        setState(result.data[0] ? 'ready' : 'empty');
+      })
+      .catch(() => {
+        if (active) setState('error');
+      });
+    return () => {
+      active = false;
+    };
+  }, [retry]);
   if (state === 'loading')
     return (
       <div className="featured-layout">

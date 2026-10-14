@@ -3,13 +3,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { apiFetch, jsonBody } from '@/lib/api';
 import type { ApiUser } from '@/types/api';
+import type { AgentRegisterValues, RegisterValues } from '@/lib/schemas';
 
 type AuthContextValue = {
   user: ApiUser | null;
   loading: boolean;
   refreshUser: () => Promise<void>;
   signIn: (values: { email: string; password: string }) => Promise<ApiUser>;
-  signUp: (values: { name: string; email: string; password: string; phone?: string }) => Promise<ApiUser>;
+  signUp: (values: RegisterValues) => Promise<{ message: string }>;
+  applyAsAgent: (values: AgentRegisterValues) => Promise<{ message: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -44,16 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(
-    async (values: { name: string; email: string; password: string; phone?: string }) => {
-      const result = await apiFetch<{ user: ApiUser }>('/auth/register', {
+    async (values: RegisterValues) => {
+      const result = await apiFetch<{ message: string }>('/auth/register', {
         method: 'POST',
         body: jsonBody(values),
       });
-      setUser(result.data.user);
-      return result.data.user;
+      return result.data;
     },
     [],
   );
+
+  const applyAsAgent = useCallback(async (values: AgentRegisterValues) => {
+    const result = await apiFetch<{ message: string }>('/auth/register-agent', {
+      method: 'POST',
+      body: jsonBody(values),
+    });
+    return result.data;
+  }, []);
 
   const signOut = useCallback(async () => {
     try {
@@ -64,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, refreshUser, signIn, signUp, signOut }),
-    [user, loading, refreshUser, signIn, signUp, signOut],
+    () => ({ user, loading, refreshUser, signIn, signUp, applyAsAgent, signOut }),
+    [user, loading, refreshUser, signIn, signUp, applyAsAgent, signOut],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

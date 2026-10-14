@@ -11,12 +11,17 @@ import { toast } from '@/components/ui/toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
+import { apiFetch, jsonBody } from '@/lib/api';
 
 type Props = { mode: 'login' | 'register'; nextPath?: string };
 
 export function AuthForm({ mode, nextPath }: Props) {
   const { signIn, signUp } = useAuth();
   const router = useRouter();
+  const [successMessage, setSuccessMessage] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [resending, setResending] = useState(false);
   const isRegister = mode === 'register';
   const login = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -31,8 +36,15 @@ export function AuthForm({ mode, nextPath }: Props) {
 
   async function submit(values: LoginValues | RegisterValues) {
     try {
-      const user = isRegister ? await signUp(values as RegisterValues) : await signIn(values as LoginValues);
-      toast(isRegister ? 'Welcome to EstatePro.' : 'Welcome back.', 'success');
+      if (isRegister) {
+        const result = await signUp(values as RegisterValues);
+        setRegisteredEmail((values as RegisterValues).email);
+        setSuccessMessage(result.message);
+        toast('Account created. Check your email to verify it.', 'success');
+        return;
+      }
+      const user = await signIn(values as LoginValues);
+      toast('Welcome back.', 'success');
       const destination =
         nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')
           ? nextPath
@@ -40,7 +52,7 @@ export function AuthForm({ mode, nextPath }: Props) {
             ? '/admin'
             : user.role === 'AGENT'
               ? '/dashboard'
-              : '/favorites';
+              : '/listings';
       router.replace(destination);
       router.refresh();
     } catch (error) {
@@ -48,6 +60,33 @@ export function AuthForm({ mode, nextPath }: Props) {
       form.setError('root', { message });
     }
   }
+
+  async function resendVerification() {
+    setResending(true);
+    try {
+      const result = await apiFetch<{ message: string }>('/auth/resend-verification', {
+        method: 'POST',
+        body: jsonBody({ email: registeredEmail }),
+      });
+      toast(result.data.message, 'success');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'The verification email could not be sent.', 'error');
+    } finally {
+      setResending(false);
+    }
+  }
+
+  if (successMessage)
+    return (
+      <div className="grid gap-4" role="status">
+        <p className="border border-[#dce6dc] bg-[#f3f7f2] px-4 py-3 text-sm leading-6 text-forest">{successMessage}</p>
+        <p className="text-sm text-muted">Open the verification link in your email, then sign in.</p>
+        <Button type="button" variant="secondary" disabled={resending} onClick={() => void resendVerification()}>
+          {resending ? 'Sending…' : 'Resend verification email'}
+        </Button>
+        <Button href="/login" variant="ghost">Go to sign in</Button>
+      </div>
+    );
 
   return (
     <form
@@ -73,7 +112,7 @@ export function AuthForm({ mode, nextPath }: Props) {
         required
         type="email"
         autoComplete="email"
-        {...form.register('email')}
+        {...(isRegister ? register.register('email') : login.register('email'))}
         error={errors.email?.message}
       />
       {isRegister && (
@@ -91,7 +130,7 @@ export function AuthForm({ mode, nextPath }: Props) {
         required
         type="password"
         autoComplete={isRegister ? 'new-password' : 'current-password'}
-        {...form.register('password')}
+        {...(isRegister ? register.register('password') : login.register('password'))}
         error={errors.password?.message}
         hint={isRegister ? 'Use at least 8 characters.' : undefined}
       />
@@ -124,6 +163,21 @@ export function AuthForm({ mode, nextPath }: Props) {
           </>
         )}
       </p>
+      {isRegister ? (
+        <p className="text-center text-sm text-muted">
+          Want to represent homes? <Link className="font-medium text-forest underline" href="/register/agent">Apply as an agent</Link>
+        </p>
+      ) : (
+        <div className="grid gap-2 text-center text-sm">
+          <Link className="font-medium text-forest underline" href="/forgot-password">Forgot your password?</Link>
+          <Link className="font-medium text-forest underline" href="/resend-verification">Resend email verification</Link>
+        </div>
+      )}
+      {isRegister && (
+        <p className="text-center text-sm text-muted">
+          Already created an account? <Link className="font-medium text-forest underline" href="/resend-verification">Resend verification email</Link>
+        </p>
+      )}
     </form>
   );
 }
@@ -161,7 +215,19 @@ export function AuthAside({ register = false }: { register?: boolean }) {
   );
 }
 
-export function AuthCard({ children, register = false }: { children: React.ReactNode; register?: boolean }) {
+export function AuthCard({
+  children,
+  register = false,
+  agentApplication = false,
+  heading,
+  description,
+}: {
+  children: React.ReactNode;
+  register?: boolean;
+  agentApplication?: boolean;
+  heading?: string;
+  description?: string;
+}) {
   return (
     <main className="auth-page">
       <div className={cn('auth-card', register && 'auth-card-wide')}>
@@ -178,12 +244,20 @@ export function AuthCard({ children, register = false }: { children: React.React
               <span className="eyebrow-rule" /> {register ? 'A GOOD PLACE TO START' : 'WELCOME BACK'}
             </p>
             <h1 className="mt-4 font-display text-3xl font-medium tracking-tight">
-              {register ? 'Create your account.' : 'Sign in to EstatePro.'}
+              {heading ??
+                (agentApplication
+                  ? 'Apply to join our agent team.'
+                  : register
+                    ? 'Create your account.'
+                    : 'Sign in to EstatePro.')}
             </h1>
             <p className="mt-2 text-sm leading-6 text-muted">
-              {register
-                ? 'Save homes and talk with the people who know them best.'
-                : 'Pick up where you left off and keep moving forward.'}
+              {description ??
+                (agentApplication
+                  ? 'Tell us about your experience. We review every agent application before granting listing access.'
+                  : register
+                    ? 'Save homes and talk with the people who know them best.'
+                    : 'Pick up where you left off and keep moving forward.')}
             </p>
           </div>
           <div className="mt-7">{children}</div>

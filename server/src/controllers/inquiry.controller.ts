@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { InquiryStatus, PropertyStatus, Role } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { sendEmail } from '../services/email.service';
 import { AppError, sendData } from '../utils/http';
 
 export const list: RequestHandler = async (req, res) => {
@@ -11,6 +12,27 @@ export const list: RequestHandler = async (req, res) => {
     prisma.inquiry.findMany({
       where,
       include: { property: { select: { id: true, title: true, agentId: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.inquiry.count({ where }),
+  ]);
+  return res.json({
+    success: true,
+    data,
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  });
+};
+
+export const listMine: RequestHandler = async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const where = { userId: req.user!.id };
+  const [data, total] = await prisma.$transaction([
+    prisma.inquiry.findMany({
+      where,
+      include: { property: { select: { id: true, title: true, city: true, state: true } } },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
@@ -49,16 +71,36 @@ export const create: RequestHandler = async (req, res) => {
     phone?: string;
     message: string;
   };
-  if (input.propertyId) {
-    const property = await prisma.property.findFirst({
-      where: { id: input.propertyId, status: PropertyStatus.APPROVED },
-    });
-    if (!property) throw new AppError('Property not found.', 404, 'NOT_FOUND');
-  }
+  const property = input.propertyId
+    ? await prisma.property.findFirst({
+        where: { id: input.propertyId, status: PropertyStatus.APPROVED },
+        include: { agent: { select: { email: true, name: true } } },
+      })
+    : null;
+  if (input.propertyId && !property) throw new AppError('Property not found.', 404, 'NOT_FOUND');
   const inquiry = await prisma.inquiry.create({
     data: { ...input, phone: input.phone || null, userId: req.user?.id ?? null },
     select: { id: true, createdAt: true },
   });
+  const notifications = [
+    sendEmail(
+      input.email,
+      'We received your EstatePro inquiry',
+      `Thank you for contacting EstatePro about ${property?.title ?? 'your property question'}. Your message has been sent to the relevant advisor.`,
+    ),
+  ];
+  if (property)
+    notifications.push(
+      sendEmail(
+        property.agent.email,
+        `New inquiry about ${property.title}`,
+        `You have received an inquiry about ${property.title}.\n\nFrom: ${input.name}\nEmail: ${input.email}\nPhone: ${input.phone || 'Not provided'}\n\n${input.message}`,
+      ),
+    );
+  const deliveryResults = await Promise.allSettled(notifications);
+  for (const result of deliveryResults) {
+    if (result.status === 'rejected') console.error('Inquiry email notification failed:', result.reason);
+  }
   return sendData(
     res,
     { id: inquiry.id, createdAt: inquiry.createdAt, message: 'Your inquiry has been sent.' },

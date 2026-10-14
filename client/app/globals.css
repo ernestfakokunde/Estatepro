@@ -6,7 +6,7 @@
 
 :root {
   --ink: #202522;
-  --muted: #838983;
+  --muted: #68726a;
   --green: #183f32;
   --line: #e8eae6;
   --paper: #fff;
@@ -25,6 +25,8 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 a {
@@ -51,6 +53,18 @@ textarea {
 ::selection {
   background: #dce6dc;
   color: var(--green);
+}
+@layer utilities {
+  .text-sm {
+    font-size: 1rem;
+  }
+  .text-xs {
+    font-size: 0.875rem;
+  }
+  .text-\[10px\],
+  .text-\[11px\] {
+    font-size: 0.75rem;
+  }
 }
 .brand {
   display: inline-flex;

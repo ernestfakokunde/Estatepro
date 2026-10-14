@@ -1,9 +1,17 @@
 import { Router } from 'express';
 import { Role } from '@prisma/client';
-import { moderateProperty, properties, summary, updateUser, users } from '../controllers/admin.controller';
+import {
+  agentApplications,
+  moderateProperty,
+  properties,
+  reviewAgentApplication,
+  summary,
+  updateUser,
+  users,
+} from '../controllers/admin.controller';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
-import { userUpdateSchema } from '../validators/admin';
+import { agentReviewSchema, userUpdateSchema } from '../validators/admin';
 import { moderationSchema } from '../validators/property';
 
 const router = Router();
@@ -11,6 +19,8 @@ router.use(requireAuth, requireRole(Role.ADMIN));
 router.get('/summary', summary);
 router.get('/properties', properties);
 router.patch('/properties/:id/status', validateBody(moderationSchema), moderateProperty);
+router.get('/agents', agentApplications);
+router.patch('/agents/:id/status', validateBody(agentReviewSchema), reviewAgentApplication);
 router.get('/users', users);
 router.patch('/users/:id', validateBody(userUpdateSchema), updateUser);
 

@@ -144,15 +144,20 @@ async function main() {
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD;
-  if (adminEmail && adminPassword && !adminPassword.startsWith('REPLACE_')) {
+  const adminPasswordIsPlaceholder = adminPassword?.startsWith('REPLACE_') ?? false;
+  if ((adminEmail && !adminPassword) || (!adminEmail && adminPassword && !adminPasswordIsPlaceholder)) {
+    throw new Error('Set both SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in server/.env to create the admin account.');
+  }
+  if (adminEmail && adminPassword && !adminPasswordIsPlaceholder) {
     if (adminPassword.length < 12)
       throw new Error('SEED_ADMIN_PASSWORD must contain at least 12 characters.');
     const passwordHash = await bcrypt.hash(adminPassword, Number(process.env.BCRYPT_ROUNDS) || 12);
-    await prisma.user.upsert({
+    const admin = await prisma.user.upsert({
       where: { email: adminEmail },
       update: { name: 'EstatePro Administrator', role: Role.ADMIN, isActive: true },
       create: { name: 'EstatePro Administrator', email: adminEmail, passwordHash, role: Role.ADMIN },
     });
+    console.log(`Seeded admin account ${admin.email} with role ${admin.role}.`);
   }
 
   for (const listing of listings) {
@@ -172,12 +177,25 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${listings.length} Nigerian property listings for ${agentEmail}.`);
+  console.log(`Seeded agent account ${agent.email} with role ${agent.role}.`);
+  console.log(`Seeded ${listings.length} Nigerian property listings.`);
 }
 
 main()
   .catch((error: unknown) => {
-    console.error(error);
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'P2021'
+    ) {
+      console.error(
+        'The database tables are missing. From the repository root, run `npm run db:generate`, then `npm run db:push`, and retry `npm run db:seed`.',
+      );
+      console.error(error.message);
+    } else {
+      console.error(error);
+    }
     process.exitCode = 1;
   })
   .finally(async () => {

@@ -29,7 +29,7 @@ export function Navbar() {
     }
   }
 
-  const roleHref = user?.role === 'ADMIN' ? '/admin' : '/dashboard';
+  const roleHref = user?.role === 'ADMIN' ? '/admin' : user?.role === 'AGENT' ? '/dashboard' : '/favorites';
   return (
     <header className="site-header sticky top-0 z-40 border-b border-[#f0f1ee] bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-[76px] w-[min(1160px,calc(100%-36px))] items-center justify-between gap-5 md:h-[82px] md:w-[calc(100%-64px)]">
@@ -48,15 +48,15 @@ export function Navbar() {
             <Link
               key={item.href}
               href={item.href}
-              aria-current={pathname === item.href ? 'page' : undefined}
-              className={`transition hover:text-forest ${pathname === item.href ? 'text-forest' : ''}`}
+              aria-current={pathname === item.href || pathname.startsWith(`${item.href}/`) ? 'page' : undefined}
+              className={`min-h-11 border-b-2 border-transparent py-3 transition hover:text-forest ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? 'border-forest text-forest' : ''}`}
             >
               {item.label}
             </Link>
           ))}
         </nav>
         <div className="hidden items-center gap-4 md:flex">
-          {user && (
+          {user && user.role !== 'USER' && (
             <Link
               className="relative rounded-full p-2 text-[#657268] hover:bg-canvas"
               href="/favorites"
@@ -65,12 +65,17 @@ export function Navbar() {
               <Heart size={17} />
             </Link>
           )}
+          {user?.role === 'USER' && (
+            <Link href="/my-inquiries" className="text-sm font-medium text-ink hover:text-forest">
+              My inquiries
+            </Link>
+          )}
           {loading ? (
             <span className="h-9 w-24 animate-pulse bg-canvas" />
           ) : user ? (
             <>
-              <Link href={roleHref} className="text-xs font-medium text-ink hover:text-forest">
-                {user.name.split(' ')[0]}
+              <Link href={roleHref} className="text-sm font-medium text-ink hover:text-forest">
+                {user.role === 'USER' ? 'Saved homes' : user.name.split(' ')[0]}
               </Link>
               <button onClick={handleSignOut} className="text-xs text-muted hover:text-ink">
                 Sign out
@@ -109,7 +114,8 @@ export function Navbar() {
               key={item.href}
               href={item.href}
               onClick={() => setMenuOpen(false)}
-              className="px-2 py-3 text-sm text-ink"
+              aria-current={pathname === item.href || pathname.startsWith(`${item.href}/`) ? 'page' : undefined}
+              className={`px-2 py-3 text-sm text-ink ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? 'bg-canvas font-medium text-forest' : ''}`}
             >
               {item.label}
             </Link>
@@ -123,9 +129,16 @@ export function Navbar() {
               >
                 Saved homes
               </Link>
-              <Link href={roleHref} onClick={() => setMenuOpen(false)} className="px-2 py-3 text-sm text-ink">
-                My account
-              </Link>
+              {user.role === 'USER' && (
+                <Link href="/my-inquiries" onClick={() => setMenuOpen(false)} className="px-2 py-3 text-sm text-ink">
+                  My inquiries
+                </Link>
+              )}
+              {user.role !== 'USER' && (
+                <Link href={roleHref} onClick={() => setMenuOpen(false)} className="px-2 py-3 text-sm text-ink">
+                  My workspace
+                </Link>
+              )}
               <button onClick={handleSignOut} className="px-2 py-3 text-left text-sm text-ink">
                 Sign out
               </button>

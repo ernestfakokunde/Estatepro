@@ -26,12 +26,12 @@ export function Footer() {
           </div>
         </div>
         <div>
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink">For owners</h2>
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink">Your account</h2>
           <div className="grid gap-3 text-sm text-muted">
             <Link href="/register">
-              List your property <ArrowUpRight className="ml-1 inline" size={13} />
+              Create an account <ArrowUpRight className="ml-1 inline" size={13} />
             </Link>
-            <Link href="/login">Agent sign in</Link>
+            <Link href="/login">Sign in</Link>
             <span>Lagos &middot; Abuja &middot; Niger State</span>
           </div>
         </div>

@@ -1,4 +1,5 @@
-﻿node_modules/
+node_modules/
+client/package-lock.json
 .next/
 **/.next/
 dist/
@@ -8,3 +9,4 @@ dist/
 *.tsbuildinfo
 .vercel/
 coverage/
+node_modules

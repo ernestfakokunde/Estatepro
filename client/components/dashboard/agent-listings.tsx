@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowUpRight, CirclePlus, RefreshCw, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatNaira, titleCase } from '@/lib/utils';
@@ -17,7 +17,7 @@ export function AgentListings() {
   const [retry, setRetry] = useState(0);
   const [remove, setRemove] = useState<Property | null>(null);
   const [removing, setRemoving] = useState(false);
-  const load = useCallback(() => {
+  useEffect(() => {
     setStatus('loading');
     apiFetch<Property[]>('/properties/mine?limit=50')
       .then((result) => {
@@ -26,9 +26,6 @@ export function AgentListings() {
       })
       .catch(() => setStatus('error'));
   }, [retry]);
-  useEffect(() => {
-    load();
-  }, [load]);
 
   async function confirmRemove() {
     if (!remove) return;

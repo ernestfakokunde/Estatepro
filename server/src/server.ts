@@ -54,13 +54,47 @@ app.use('/api', (_req, res) =>
 );
 app.use(errorHandler);
 
-const server = app.listen(env.PORT, () => console.log(`EstatePro API listening on port ${env.PORT}`));
+let server: ReturnType<typeof app.listen> | undefined;
+
+async function start() {
+  try {
+    await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('Database connected successfully.');
+
+    const cloudinaryConfigured = Boolean(
+      env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET,
+    );
+    console.log(
+      cloudinaryConfigured
+        ? 'Cloudinary credentials configured (connection is checked when image upload is used).'
+        : 'Cloudinary not configured; image upload will be unavailable.',
+    );
+    console.log(
+      env.RESEND_API_KEY
+        ? 'Resend email service configured.'
+        : 'Resend email service not configured; outbound emails will be logged in the development console.',
+    );
+
+    server = app.listen(env.PORT, () => console.log(`EstatePro API listening on port ${env.PORT}`));
+  } catch (error) {
+    console.error('API startup failed; database connection could not be verified.', error);
+    await prisma.$disconnect();
+    process.exitCode = 1;
+  }
+}
+
+void start();
 
 async function shutdown() {
-  server.close(async () => {
+  if (server) server.close(async () => {
     await prisma.$disconnect();
     process.exit(0);
   });
+  else {
+    await prisma.$disconnect();
+    process.exit(0);
+  }
 }
 
 process.on('SIGINT', shutdown);

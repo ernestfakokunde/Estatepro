@@ -13,15 +13,29 @@ import { Input } from '@/components/ui/input';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useAuth } from '@/context/AuthContext';
 
-type Summary = { users: number; properties: number; pendingReview: number; newInquiries: number };
+type Summary = {
+  users: number;
+  properties: number;
+  pendingReview: number;
+  newInquiries: number;
+  agentApplications: number;
+};
 type ManagedUser = ApiUser & { isActive: boolean; createdAt: string };
-type Tab = 'properties' | 'users';
+type AgentApplication = {
+  id: string;
+  agency: string | null;
+  licenseNumber: string | null;
+  bio: string | null;
+  user: { id: string; name: string; email: string; phone: string | null; emailVerified: boolean; createdAt: string };
+};
+type Tab = 'properties' | 'agents' | 'users';
 
 export function AdminPanel() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [agents, setAgents] = useState<AgentApplication[]>([]);
   const [tab, setTab] = useState<Tab>('properties');
   const [status, setStatus] = useState<PropertyStatus | ''>('PENDING');
   const [loading, setLoading] = useState(true);
@@ -44,12 +58,14 @@ export function AdminPanel() {
             `/admin/users?limit=50${debouncedUserQuery ? `&q=${encodeURIComponent(debouncedUserQuery)}` : ''}`,
           )
         : Promise.resolve(null),
+      tab === 'agents' ? apiFetch<AgentApplication[]>('/admin/agents') : Promise.resolve(null),
     ])
-      .then(([summaryResult, propertyResult, userResult]) => {
+      .then(([summaryResult, propertyResult, userResult, agentResult]) => {
         if (!active) return;
         setSummary(summaryResult.data);
         if (propertyResult) setProperties(propertyResult.data);
         if (userResult) setUsers(userResult.data);
+        if (agentResult) setAgents(agentResult.data);
       })
       .catch(() => {
         if (active) setError(true);
@@ -82,14 +98,25 @@ export function AdminPanel() {
     }
   }
 
+  async function reviewAgent(id: string, status: 'APPROVED' | 'REJECTED') {
+    try {
+      await apiFetch(`/admin/agents/${id}/status`, { method: 'PATCH', body: jsonBody({ status }) });
+      toast(`Agent application ${status.toLowerCase()}.`, 'success');
+      setRetry((value) => value + 1);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'The application could not be updated.', 'error');
+    }
+  }
+
   return (
     <div className="grid gap-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {[
           ['People', summary?.users, Users],
           ['All homes', summary?.properties, BadgeCheck],
           ['Awaiting review', summary?.pendingReview, CircleAlert],
           ['New inquiries', summary?.newInquiries, RefreshCw],
+          ['Agent applications', summary?.agentApplications, Users],
         ].map(([label, value, Icon]) => {
           const StatIcon = Icon as typeof Users;
           return (
@@ -112,6 +139,14 @@ export function AdminPanel() {
             <p className="mt-1 text-xs text-muted">Keep the marketplace accurate and useful.</p>
           </div>
           <div role="tablist" aria-label="Admin records" className="flex border border-line p-1">
+            <button
+              role="tab"
+              aria-selected={tab === 'agents'}
+              onClick={() => setTab('agents')}
+              className={`min-h-9 px-3 text-xs ${tab === 'agents' ? 'bg-forest text-white' : 'text-muted'}`}
+            >
+              Agent applications{summary?.agentApplications ? ` (${summary.agentApplications})` : ''}
+            </button>
             <button
               role="tab"
               aria-selected={tab === 'properties'}
@@ -289,7 +324,7 @@ export function AdminPanel() {
                           className="ml-2 min-h-9 border border-line bg-white px-2 text-xs disabled:opacity-60"
                         >
                           <option value="USER">User</option>
-                          <option value="AGENT">Agent</option>
+                          <option value="AGENT" disabled={person.role !== 'AGENT'}>Agent (approved)</option>
                           <option value="ADMIN">Admin</option>
                         </select>
                       </label>
@@ -306,6 +341,47 @@ export function AdminPanel() {
                   </article>
                 );
               })}
+          </div>
+        )}
+        {tab === 'agents' && (
+          <div className="mt-5">
+            <p className="text-xs text-muted">Review verified email addresses before granting listing access.</p>
+            {loading && <Skeleton className="mt-4 h-20 w-full" />}
+            {!loading && error && (
+              <div role="alert" className="empty-state mt-4">
+                <h3>Agent applications could not be loaded.</h3>
+                <Button type="button" variant="secondary" onClick={() => setRetry((value) => value + 1)}>
+                  Try again
+                </Button>
+              </div>
+            )}
+            {!loading && !error && agents.length === 0 && (
+              <div className="empty-state mt-4">
+                <span className="empty-mark"><Users /></span>
+                <h3>No agent applications to review.</h3>
+              </div>
+            )}
+            {!loading && !error && agents.map((application) => (
+              <article key={application.id} className="mt-4 flex flex-wrap items-start justify-between gap-4 border border-line p-4">
+                <div className="min-w-[14rem] flex-1">
+                  <h3 className="text-sm font-semibold">{application.user.name}</h3>
+                  <p className="mt-1 text-xs text-muted">
+                    {application.user.email} · {application.user.phone} · {application.user.emailVerified ? 'Email verified' : 'Email not verified'}
+                  </p>
+                  {application.agency && <p className="mt-2 text-sm">Agency: {application.agency}</p>}
+                  {application.licenseNumber && <p className="mt-1 text-sm">License: {application.licenseNumber}</p>}
+                  {application.bio && <p className="mt-2 text-sm leading-6 text-muted">{application.bio}</p>}
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" disabled={!application.user.emailVerified} onClick={() => void reviewAgent(application.id, 'APPROVED')}>
+                    Approve
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => void reviewAgent(application.id, 'REJECTED')}>
+                    Reject
+                  </Button>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
