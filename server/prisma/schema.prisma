@@ -68,6 +68,7 @@ model User {
   properties   Property[]
   favorites    Favorite[]
   inquiries    Inquiry[]
+  notifications Notification[]
 
   @@index([role])
   @@index([createdAt])
@@ -170,10 +171,27 @@ model Inquiry {
   property   Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   userId     String?
   user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notifications Notification[]
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
   @@index([status, createdAt])
   @@index([propertyId])
   @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String   @db.Text
+  href      String
+  readAt    DateTime?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inquiryId String?
+  inquiry   Inquiry? @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([inquiryId])
 }

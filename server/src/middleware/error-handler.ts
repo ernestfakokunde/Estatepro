@@ -36,6 +36,13 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
       .status(404)
       .json({ success: false, error: { code: 'NOT_FOUND', message: 'The requested record was not found.' } });
   }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P1001') {
+    console.error('Database is unreachable while handling an API request.', error);
+    return res.status(503).json({
+      success: false,
+      error: { code: 'DATABASE_UNAVAILABLE', message: 'The database is temporarily unreachable. Please try again shortly.' },
+    });
+  }
   if (error instanceof Error && error.name === 'MulterError') {
     return res.status(400).json({ success: false, error: { code: 'UPLOAD_ERROR', message: error.message } });
   }

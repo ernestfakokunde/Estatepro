@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin.routes';
 import authRoutes from './routes/auth.routes';
 import favoritesRoutes from './routes/favorites.routes';
 import inquiryRoutes from './routes/inquiry.routes';
+import notificationRoutes from './routes/notification.routes';
 import propertyRoutes from './routes/property.routes';
 import uploadRoutes from './routes/upload.routes';
 
@@ -47,6 +48,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api', (_req, res) =>
@@ -70,12 +72,6 @@ async function start() {
         ? 'Cloudinary credentials configured (connection is checked when image upload is used).'
         : 'Cloudinary not configured; image upload will be unavailable.',
     );
-    console.log(
-      env.RESEND_API_KEY
-        ? 'Resend email service configured.'
-        : 'Resend email service not configured; outbound emails will be logged in the development console.',
-    );
-
     server = app.listen(env.PORT, () => console.log(`EstatePro API listening on port ${env.PORT}`));
   } catch (error) {
     console.error('API startup failed; database connection could not be verified.', error);

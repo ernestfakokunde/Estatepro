@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Inbox, LayoutDashboard, ListChecks, PlusCircle, ShieldCheck } from 'lucide-react';
+import { Bell, Inbox, LayoutDashboard, ListChecks, PlusCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +19,7 @@ export function DashboardShell({ children, admin = false }: { children: React.Re
         { href: '/dashboard/listings', label: 'My listings', icon: ListChecks },
         { href: '/dashboard/listings/new', label: 'Create listing', icon: PlusCircle },
         { href: '/dashboard/inquiries', label: 'Inquiries', icon: Inbox },
+        { href: '/inbox', label: 'Notifications', icon: Bell },
       ];
   return (
     <main className="dashboard-wrap page-container py-8 md:py-12">

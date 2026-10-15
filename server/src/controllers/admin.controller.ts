@@ -1,7 +1,6 @@
 import type { RequestHandler } from 'express';
 import { AgentApplicationStatus, PropertyStatus, Role } from '@prisma/client';
 import { prisma } from '../config/prisma';
-import { sendEmail } from '../services/email.service';
 import { listProperties } from '../services/property.service';
 import { moderationSchema } from '../validators/property';
 import { propertyQuerySchema } from '../validators/property';
@@ -84,7 +83,7 @@ export const agentApplications: RequestHandler = async (_req, res) => {
   const applications = await prisma.agentProfile.findMany({
     where: { status: AgentApplicationStatus.PENDING },
     include: {
-      user: { select: { id: true, name: true, email: true, phone: true, emailVerified: true, createdAt: true } },
+      user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
     },
     orderBy: { createdAt: 'asc' },
   });
@@ -100,8 +99,10 @@ export const reviewAgentApplication: RequestHandler = async (req, res) => {
   if (!application) throw new AppError('Agent application not found.', 404, 'NOT_FOUND');
   if (application.status !== AgentApplicationStatus.PENDING)
     throw new AppError('This agent application has already been reviewed.', 409, 'APPLICATION_ALREADY_REVIEWED');
-  if (status === AgentApplicationStatus.APPROVED && !application.user.emailVerified)
-    throw new AppError('The applicant must verify their email before approval.', 400, 'EMAIL_NOT_VERIFIED');
+  const approved = status === AgentApplicationStatus.APPROVED;
+  const outcome = approved
+    ? 'Your EstatePro agent application has been approved. You can sign in and manage property listings.'
+    : 'Your EstatePro agent application was not approved at this time. You can contact our team if you have questions.';
   const updated = await prisma.$transaction(async (tx) => {
     const profile = await tx.agentProfile.update({
       where: { id: application.id },
@@ -109,18 +110,18 @@ export const reviewAgentApplication: RequestHandler = async (req, res) => {
     });
     await tx.user.update({
       where: { id: application.userId },
-      data: { role: status === AgentApplicationStatus.APPROVED ? Role.AGENT : Role.USER },
+      data: { role: approved ? Role.AGENT : Role.USER },
+    });
+    await tx.notification.create({
+      data: {
+        userId: application.userId,
+        title: `Agent application ${approved ? 'approved' : 'reviewed'}`,
+        message: outcome,
+        href: approved ? '/dashboard' : '/listings',
+      },
     });
     return profile;
   });
-  const outcome = status === AgentApplicationStatus.APPROVED
-    ? 'Your email is verified and your EstatePro agent application has been approved. You can now sign in and manage property listings.'
-    : 'Your EstatePro agent application was not approved at this time. You can contact our team if you have questions.';
-  const emailResult = await Promise.allSettled([
-    sendEmail(application.user.email, `EstatePro agent application ${status.toLowerCase()}`, outcome),
-  ]);
-  if (emailResult[0].status === 'rejected')
-    console.error('Agent application decision email failed:', emailResult[0].reason);
   return sendData(res, updated);
 };
 

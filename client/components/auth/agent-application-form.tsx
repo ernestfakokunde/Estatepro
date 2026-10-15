@@ -30,7 +30,7 @@ export function AgentApplicationForm() {
     return (
       <div className="grid gap-4" role="status">
         <p className="border border-[#dce6dc] bg-[#f3f7f2] px-4 py-3 text-sm leading-6 text-forest">{success}</p>
-        <p className="text-sm leading-6 text-muted">Verify your email first. An EstatePro admin will then review your details and notify you by email.</p>
+        <p className="text-sm leading-6 text-muted">Email verification is temporarily disabled. An EstatePro admin must approve your application before you can list homes.</p>
         <Button href="/login" variant="secondary">Go to sign in</Button>
       </div>
     );
@@ -49,7 +49,6 @@ export function AgentApplicationForm() {
         {form.formState.isSubmitting ? 'Submitting…' : 'Submit agent application'}
       </Button>
       <p className="text-center text-sm text-muted">Already have an account? <Link className="text-forest underline" href="/login">Sign in</Link></p>
-      <p className="text-center text-sm text-muted">Already submitted? <Link className="text-forest underline" href="/resend-verification">Resend email verification</Link></p>
     </form>
   );
 }

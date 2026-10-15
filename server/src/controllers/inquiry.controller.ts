@@ -1,7 +1,6 @@
 import type { RequestHandler } from 'express';
 import { InquiryStatus, PropertyStatus, Role } from '@prisma/client';
 import { prisma } from '../config/prisma';
-import { sendEmail } from '../services/email.service';
 import { AppError, sendData } from '../utils/http';
 
 export const list: RequestHandler = async (req, res) => {
@@ -74,33 +73,38 @@ export const create: RequestHandler = async (req, res) => {
   const property = input.propertyId
     ? await prisma.property.findFirst({
         where: { id: input.propertyId, status: PropertyStatus.APPROVED },
-        include: { agent: { select: { email: true, name: true } } },
+        include: { agent: { select: { id: true, name: true } } },
       })
     : null;
   if (input.propertyId && !property) throw new AppError('Property not found.', 404, 'NOT_FOUND');
-  const inquiry = await prisma.inquiry.create({
-    data: { ...input, phone: input.phone || null, userId: req.user?.id ?? null },
-    select: { id: true, createdAt: true },
+  const inquiry = await prisma.$transaction(async (tx) => {
+    const created = await tx.inquiry.create({
+      data: { ...input, phone: input.phone || null, userId: req.user?.id ?? null },
+      select: { id: true, createdAt: true },
+    });
+    const notifications = [];
+    const subject = property ? ` about ${property.title}` : '';
+    if (req.user) {
+      notifications.push({
+        userId: req.user.id,
+        inquiryId: created.id,
+        title: 'Your inquiry was sent',
+        message: `Your message${subject} has been sent. You can review it in My inquiries.`,
+        href: '/my-inquiries',
+      });
+    }
+    if (property) {
+      notifications.push({
+        userId: property.agent.id,
+        inquiryId: created.id,
+        title: 'New property inquiry',
+        message: `${input.name} sent an inquiry${subject}. Open your inquiries to review the message and contact details.`,
+        href: '/dashboard/inquiries',
+      });
+    }
+    if (notifications.length) await tx.notification.createMany({ data: notifications });
+    return created;
   });
-  const notifications = [
-    sendEmail(
-      input.email,
-      'We received your EstatePro inquiry',
-      `Thank you for contacting EstatePro about ${property?.title ?? 'your property question'}. Your message has been sent to the relevant advisor.`,
-    ),
-  ];
-  if (property)
-    notifications.push(
-      sendEmail(
-        property.agent.email,
-        `New inquiry about ${property.title}`,
-        `You have received an inquiry about ${property.title}.\n\nFrom: ${input.name}\nEmail: ${input.email}\nPhone: ${input.phone || 'Not provided'}\n\n${input.message}`,
-      ),
-    );
-  const deliveryResults = await Promise.allSettled(notifications);
-  for (const result of deliveryResults) {
-    if (result.status === 'rejected') console.error('Inquiry email notification failed:', result.reason);
-  }
   return sendData(
     res,
     { id: inquiry.id, createdAt: inquiry.createdAt, message: 'Your inquiry has been sent.' },

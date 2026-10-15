@@ -7,8 +7,11 @@ import { apiFetch, jsonBody } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export function InquiryForm({ propertyId, agentName }: { propertyId?: string; agentName?: string }) {
+  const { user } = useAuth();
   const {
     register,
     handleSubmit,
@@ -40,6 +43,11 @@ export function InquiryForm({ propertyId, agentName }: { propertyId?: string; ag
         <p className="mt-2 text-xs leading-5 text-muted">
           Share a few details and a local advisor will be in touch.
         </p>
+        {!user && (
+          <p className="mt-2 text-xs leading-5 text-muted">
+            <Link className="font-medium text-forest underline underline-offset-2" href="/login">Sign in</Link> before sending if you want a copy in your EstatePro inbox.
+          </p>
+        )}
       </div>
       {propertyId && <input type="hidden" {...register('propertyId')} />}
       <Input

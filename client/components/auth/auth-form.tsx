@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { apiFetch, jsonBody } from '@/lib/api';
 
 type Props = { mode: 'login' | 'register'; nextPath?: string };
 
@@ -20,8 +19,6 @@ export function AuthForm({ mode, nextPath }: Props) {
   const { signIn, signUp } = useAuth();
   const router = useRouter();
   const [successMessage, setSuccessMessage] = useState('');
-  const [registeredEmail, setRegisteredEmail] = useState('');
-  const [resending, setResending] = useState(false);
   const isRegister = mode === 'register';
   const login = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -38,9 +35,8 @@ export function AuthForm({ mode, nextPath }: Props) {
     try {
       if (isRegister) {
         const result = await signUp(values as RegisterValues);
-        setRegisteredEmail((values as RegisterValues).email);
         setSuccessMessage(result.message);
-        toast('Account created. Check your email to verify it.', 'success');
+        toast('Account created. You can now sign in.', 'success');
         return;
       }
       const user = await signIn(values as LoginValues);
@@ -61,29 +57,10 @@ export function AuthForm({ mode, nextPath }: Props) {
     }
   }
 
-  async function resendVerification() {
-    setResending(true);
-    try {
-      const result = await apiFetch<{ message: string }>('/auth/resend-verification', {
-        method: 'POST',
-        body: jsonBody({ email: registeredEmail }),
-      });
-      toast(result.data.message, 'success');
-    } catch (error) {
-      toast(error instanceof Error ? error.message : 'The verification email could not be sent.', 'error');
-    } finally {
-      setResending(false);
-    }
-  }
-
   if (successMessage)
     return (
       <div className="grid gap-4" role="status">
         <p className="border border-[#dce6dc] bg-[#f3f7f2] px-4 py-3 text-sm leading-6 text-forest">{successMessage}</p>
-        <p className="text-sm text-muted">Open the verification link in your email, then sign in.</p>
-        <Button type="button" variant="secondary" disabled={resending} onClick={() => void resendVerification()}>
-          {resending ? 'Sending…' : 'Resend verification email'}
-        </Button>
         <Button href="/login" variant="ghost">Go to sign in</Button>
       </div>
     );
@@ -163,21 +140,12 @@ export function AuthForm({ mode, nextPath }: Props) {
           </>
         )}
       </p>
-      {isRegister ? (
+      {isRegister && (
         <p className="text-center text-sm text-muted">
           Want to represent homes? <Link className="font-medium text-forest underline" href="/register/agent">Apply as an agent</Link>
         </p>
-      ) : (
-        <div className="grid gap-2 text-center text-sm">
-          <Link className="font-medium text-forest underline" href="/forgot-password">Forgot your password?</Link>
-          <Link className="font-medium text-forest underline" href="/resend-verification">Resend email verification</Link>
-        </div>
       )}
-      {isRegister && (
-        <p className="text-center text-sm text-muted">
-          Already created an account? <Link className="font-medium text-forest underline" href="/resend-verification">Resend verification email</Link>
-        </p>
-      )}
+      {!isRegister && <p className="text-center text-xs text-muted">Password recovery is temporarily unavailable while email delivery is disabled.</p>}
     </form>
   );
 }

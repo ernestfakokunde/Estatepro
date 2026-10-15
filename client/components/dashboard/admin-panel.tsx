@@ -26,7 +26,7 @@ type AgentApplication = {
   agency: string | null;
   licenseNumber: string | null;
   bio: string | null;
-  user: { id: string; name: string; email: string; phone: string | null; emailVerified: boolean; createdAt: string };
+  user: { id: string; name: string; email: string; phone: string | null; createdAt: string };
 };
 type Tab = 'properties' | 'agents' | 'users';
 
@@ -366,14 +366,14 @@ export function AdminPanel() {
                 <div className="min-w-[14rem] flex-1">
                   <h3 className="text-sm font-semibold">{application.user.name}</h3>
                   <p className="mt-1 text-xs text-muted">
-                    {application.user.email} · {application.user.phone} · {application.user.emailVerified ? 'Email verified' : 'Email not verified'}
+                    {application.user.email} · {application.user.phone}
                   </p>
                   {application.agency && <p className="mt-2 text-sm">Agency: {application.agency}</p>}
                   {application.licenseNumber && <p className="mt-1 text-sm">License: {application.licenseNumber}</p>}
                   {application.bio && <p className="mt-2 text-sm leading-6 text-muted">{application.bio}</p>}
                 </div>
                 <div className="flex gap-2">
-                  <Button type="button" disabled={!application.user.emailVerified} onClick={() => void reviewAgent(application.id, 'APPROVED')}>
+                  <Button type="button" onClick={() => void reviewAgent(application.id, 'APPROVED')}>
                     Approve
                   </Button>
                   <Button type="button" variant="secondary" onClick={() => void reviewAgent(application.id, 'REJECTED')}>

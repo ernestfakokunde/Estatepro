@@ -19,6 +19,3 @@ export const agentRegisterSchema = registerSchema.extend({
   bio: z.string().trim().max(1200).optional().or(z.literal('')),
 });
 
-export const emailTokenSchema = z.object({ token: z.string().min(32).max(200) });
-export const forgotPasswordSchema = z.object({ email: z.string().trim().email().max(254) });
-export const resetPasswordSchema = emailTokenSchema.extend({ password: z.string().min(8).max(72) });

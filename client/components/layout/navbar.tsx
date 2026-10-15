@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowUpRight, Heart, Menu, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/api';
 
 const navItems = [
   { href: '/listings', label: 'Explore homes' },
@@ -18,6 +19,26 @@ export function Navbar() {
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+    let active = true;
+    const refreshCount = () => {
+      apiFetch<{ unreadCount: number }>('/notifications/unread-count')
+        .then(({ data }) => { if (active) setUnreadCount(data.unreadCount); })
+        .catch(() => undefined);
+    };
+    refreshCount();
+    const timer = window.setInterval(refreshCount, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [user?.id]);
 
   async function handleSignOut() {
     try {
@@ -42,7 +63,7 @@ export function Navbar() {
         </Link>
         <nav
           aria-label="Main navigation"
-          className="hidden items-center gap-8 text-xs text-[#6f766f] md:flex"
+          className="hidden items-center gap-8 text-xs text-[#6f766f] lg:flex"
         >
           {navItems.map((item) => (
             <Link
@@ -55,7 +76,7 @@ export function Navbar() {
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="hidden items-center gap-4 lg:flex">
           {user && user.role !== 'USER' && (
             <Link
               className="relative rounded-full p-2 text-[#657268] hover:bg-canvas"
@@ -70,12 +91,18 @@ export function Navbar() {
               My inquiries
             </Link>
           )}
+          {user && (
+            <Link href="/inbox" className="relative text-sm font-medium text-ink hover:text-forest">
+              Inbox
+              {unreadCount > 0 && <span className="ml-1 rounded-full bg-forest px-1.5 py-0.5 text-xs text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+            </Link>
+          )}
           {loading ? (
             <span className="h-9 w-24 animate-pulse bg-canvas" />
           ) : user ? (
             <>
               <Link href={roleHref} className="text-sm font-medium text-ink hover:text-forest">
-                {user.role === 'USER' ? 'Saved homes' : user.name.split(' ')[0]}
+                {user.role === 'USER' ? 'Saved homes' : 'My workspace'}
               </Link>
               <button onClick={handleSignOut} className="text-xs text-muted hover:text-ink">
                 Sign out
@@ -97,7 +124,7 @@ export function Navbar() {
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
           aria-controls="mobile-navigation"
-          className="rounded-sm p-2 text-ink md:hidden"
+          className="rounded-sm p-2 text-ink lg:hidden"
           onClick={() => setMenuOpen((open) => !open)}
         >
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -107,7 +134,7 @@ export function Navbar() {
         <nav
           id="mobile-navigation"
           aria-label="Mobile navigation"
-          className="grid gap-1 border-t border-line bg-white px-5 py-4 md:hidden"
+          className="grid gap-1 border-t border-line bg-white px-5 py-4 lg:hidden"
         >
           {navItems.map((item) => (
             <Link
@@ -134,6 +161,9 @@ export function Navbar() {
                   My inquiries
                 </Link>
               )}
+              <Link href="/inbox" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-2 py-3 text-sm text-ink">
+                Inbox {unreadCount > 0 && <span className="rounded-full bg-forest px-1.5 py-0.5 text-xs text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+              </Link>
               {user.role !== 'USER' && (
                 <Link href={roleHref} onClick={() => setMenuOpen(false)} className="px-2 py-3 text-sm text-ink">
                   My workspace
