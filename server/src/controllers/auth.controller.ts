@@ -12,7 +12,7 @@ function setSessionCookie(res: Parameters<RequestHandler>[1], token: string) {
   res.cookie(env.AUTH_COOKIE_NAME, token, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production' || env.AUTH_COOKIE_SAME_SITE === 'none',
-    sameSite: env.AUTH_COOKIE_SAME_SITE,
+    sameSite: env.NODE_ENV === 'production' ? 'none' : env.AUTH_COOKIE_SAME_SITE,
     path: '/',
     maxAge: env.AUTH_COOKIE_MAX_AGE_MS,
   });
@@ -58,7 +58,7 @@ export const logout: RequestHandler = (_req, res) => {
   res.clearCookie(env.AUTH_COOKIE_NAME, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production' || env.AUTH_COOKIE_SAME_SITE === 'none',
-    sameSite: env.AUTH_COOKIE_SAME_SITE,
+    sameSite: env.NODE_ENV === 'production' ? 'none' : env.AUTH_COOKIE_SAME_SITE,
     path: '/',
   });
   return sendData(res, { message: 'You have signed out.' });
