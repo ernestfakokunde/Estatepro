@@ -16,6 +16,8 @@ import propertyRoutes from './routes/property.routes';
 import uploadRoutes from './routes/upload.routes';
 
 const app = express();
+// Render forwards the original client IP in X-Forwarded-For.
+app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet());
 app.use(
